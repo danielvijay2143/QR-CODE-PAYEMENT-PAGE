@@ -202,7 +202,7 @@
             font-weight: 600;
         }
 
-        /* --- MODAL / ADMIN PANEL STYLES --- */
+        /* ADMIN / MODAL STYLES */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -316,7 +316,7 @@
         <div class="amount-box">
             <label>Total Amount Payable</label>
             <div class="value" id="amount-display">₹100.00</div>
-            <div class="service-note-text" id="service-display">Service: Payment</div>
+            <div class="service-note-text" id="service-display">Service: Order Payment</div>
         </div>
 
         <div class="qr-wrapper">
@@ -341,7 +341,6 @@
 <!-- ADMIN / LOGIN MODAL -->
 <div class="modal-overlay" id="adminModal">
     <div class="modal">
-        <!-- View 1: Login Form -->
         <div id="loginView">
             <div class="modal-header">
                 <h3>Admin Login</h3>
@@ -359,7 +358,6 @@
             <button class="btn-submit" onclick="handleLogin()">Login</button>
         </div>
 
-        <!-- View 2: Settings Dashboard (After Successful Login) -->
         <div id="dashboardView" style="display: none;">
             <div class="modal-header">
                 <h3>Payment Settings</h3>
@@ -387,31 +385,44 @@
 </div>
 
 <script>
-    // Initial Payment Configuration
+    // Initial Default Configuration
     let paymentConfig = {
-        vpa: "yourbusiness@upi",                  // Default VPA
-        name: "Melvin Sai Infotech",               // Default Business Name
-        amount: "100.00",                         // Default Amount
-        note: "Government & Financial Services",  // Default Service Note
+        vpa: "yourbusiness@upi",                  // Set your default VPA here
+        name: "Melvin Sai Infotech",               
+        amount: "100.00",                         
+        note: "Order Payment",  
         txnRef: "TXN" + Date.now()
     };
 
     let qrCodeInstance = null;
 
-    // Render / Update Page and QR Code
+    // Check URL parameters for dynamic auto-fetching from website links
+    function fetchUrlParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.has('amount')) {
+            paymentConfig.amount = urlParams.get('amount');
+        }
+        if (urlParams.has('service')) {
+            paymentConfig.note = urlParams.get('service');
+        }
+        if (urlParams.has('orderId')) {
+            paymentConfig.txnRef = urlParams.get('orderId');
+        }
+    }
+
+    // Render Page & Dynamic QR Code
     function renderGateway() {
         document.getElementById("merchant-title").innerText = paymentConfig.name;
         document.getElementById("amount-display").innerText = "₹" + parseFloat(paymentConfig.amount).toFixed(2);
         document.getElementById("service-display").innerText = "Service: " + paymentConfig.note;
 
-        // Format NPCI Standard UPI String
+        // Build standard NPCI UPI URI
         const upiUri = `upi://pay?pa=${encodeURIComponent(paymentConfig.vpa)}&pn=${encodeURIComponent(paymentConfig.name)}&tr=${paymentConfig.txnRef}&am=${paymentConfig.amount}&cu=INR&tn=${encodeURIComponent(paymentConfig.note)}`;
 
-        // Clear existing QR code if present
         const qrContainer = document.getElementById("qrcode");
         qrContainer.innerHTML = "";
 
-        // Generate New QR Code
         qrCodeInstance = new QRCode(qrContainer, {
             text: upiUri,
             width: 180,
@@ -421,11 +432,10 @@
             correctLevel: QRCode.CorrectLevel.H
         });
 
-        // Set mobile deep link
         document.getElementById("upi-link").href = upiUri;
     }
 
-    // Modal Control
+    // Modal Functions
     function openAdminModal() {
         document.getElementById("adminModal").style.display = "flex";
     }
@@ -434,7 +444,6 @@
         document.getElementById("adminModal").style.display = "none";
     }
 
-    // Admin Authentication
     function handleLogin() {
         const user = document.getElementById("adminUser").value.trim();
         const pass = document.getElementById("adminPass").value.trim();
@@ -444,12 +453,17 @@
             errorMsg.style.display = "none";
             document.getElementById("loginView").style.display = "none";
             document.getElementById("dashboardView").style.display = "block";
+            
+            // Sync inputs with current payment state
+            document.getElementById("inputShopName").value = paymentConfig.name;
+            document.getElementById("inputVpa").value = paymentConfig.vpa;
+            document.getElementById("inputAmount").value = paymentConfig.amount;
+            document.getElementById("inputNote").value = paymentConfig.note;
         } else {
             errorMsg.style.display = "block";
         }
     }
 
-    // Update Gateway Details from Dashboard
     function updatePaymentDetails() {
         const newName = document.getElementById("inputShopName").value.trim();
         const newVpa = document.getElementById("inputVpa").value.trim();
@@ -461,14 +475,14 @@
         if (newAmount && !isNaN(newAmount)) paymentConfig.amount = newAmount;
         if (newNote) paymentConfig.note = newNote;
         
-        paymentConfig.txnRef = "TXN" + Date.now(); // Generate fresh transaction ID
+        paymentConfig.txnRef = "TXN" + Date.now();
 
         renderGateway();
         closeAdminModal();
     }
 
-    // Initialize on page load
     window.onload = function() {
+        fetchUrlParameters(); // Automatically reads amount from URL link
         renderGateway();
     };
 </script>
